@@ -156,16 +156,52 @@ public class MainActivity extends AppCompatActivity {
                 alert.put("vehicle_type", vehicleType);
                 alert.put("direction", direction);
 
-                // Add a simple vibration pattern
-                JSONObject vibrationPattern = new JSONObject();
+                // Create different vibration patterns based on vehicle type
                 JSONArray pattern = new JSONArray();
-                pattern.put(0);    // Start immediately
-                pattern.put(300);  // Vibrate
-                pattern.put(200);  // Pause
-                pattern.put(300);  // Vibrate
+
+                switch (vehicleType.toLowerCase()) {
+                    case "siren":
+                        // Urgent pattern - rapid pulses
+                        pattern.put(0);    // Start immediately
+                        pattern.put(100);  // Vibrate
+                        pattern.put(100);  // Pause
+                        pattern.put(100);  // Vibrate
+                        pattern.put(100);  // Pause
+                        pattern.put(100);  // Vibrate
+                        pattern.put(100);  // Pause
+                        pattern.put(300);  // Longer vibrate
+                        break;
+
+                    case "bike":
+                        // Moderate pattern - medium-length pulses
+                        pattern.put(0);    // Start immediately
+                        pattern.put(200);  // Vibrate
+                        pattern.put(200);  // Pause
+                        pattern.put(200);  // Vibrate
+                        pattern.put(200);  // Pause
+                        pattern.put(200);  // Vibrate
+                        break;
+
+                    case "horn":
+                        // Alert pattern - longer pulses
+                        pattern.put(0);    // Start immediately
+                        pattern.put(400);  // Vibrate
+                        pattern.put(200);  // Pause
+                        pattern.put(400);  // Vibrate
+                        break;
+
+                    default:
+                        // Default pattern - single pulse
+                        pattern.put(0);    // Start immediately
+                        pattern.put(300);  // Vibrate
+                        pattern.put(200);  // Pause
+                        pattern.put(300);  // Vibrate
+                }
+
                 alert.put("vibration_pattern", pattern);
 
                 String alertJson = alert.toString();
+                Log.d(TAG, "Sending alert to watch: " + alertJson);
 
                 // Get all connected devices
                 Task<List<Node>> nodesTask = Wearable.getNodeClient(getApplicationContext()).getConnectedNodes();

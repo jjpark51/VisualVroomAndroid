@@ -62,6 +62,9 @@ dependencies {
     implementation("androidx.core:core:1.12.0") // Instead of 1.15.0
 
     implementation("androidx.wear:wear:1.2.0")
+
+    implementation("com.airbnb.android:lottie:6.3.0")
+
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.material)

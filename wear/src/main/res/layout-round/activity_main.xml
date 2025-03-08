@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="10dp"
-    tools:context=".MainActivity"
+    tools:context=".presentation.MainActivity"
     tools:deviceIds="wear">
 
     <FrameLayout
@@ -13,12 +13,36 @@
         android:padding="5dp"
         app:layout_boxedEdges="all">
 
+        <!-- Status text at the top -->
         <TextView
             android:id="@+id/status_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="center"
+            android:layout_gravity="top|center_horizontal"
+            android:layout_marginTop="10dp"
             android:text="Waiting for connection..."
             android:textAlignment="center" />
+
+        <!-- Lottie Animation in the center -->
+        <com.airbnb.lottie.LottieAnimationView
+            android:id="@+id/vehicle_animation"
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:layout_gravity="center"
+            android:visibility="gone"
+            app:lottie_autoPlay="true"
+            app:lottie_loop="true" />
+
+        <!-- Direction indicator at the bottom -->
+        <TextView
+            android:id="@+id/direction_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|center_horizontal"
+            android:layout_marginBottom="10dp"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            android:text="LEFT" />
     </FrameLayout>
 </androidx.wear.widget.BoxInsetLayout>
