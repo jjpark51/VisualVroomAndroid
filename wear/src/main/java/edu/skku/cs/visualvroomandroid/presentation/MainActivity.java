@@ -88,37 +88,44 @@ public class MainActivity extends AppCompatActivity implements MessageClient.OnM
         Log.d(TAG, "Message received: " + path);
 
         if (path.equals(VIBRATION_PATH)) {
+            // Handle simple vibration command
             handleVibrationCommand(messageEvent.getData());
         } else if (path.equals(VEHICLE_ALERT_PATH)) {
+            // Handle vehicle alert (which now includes vibration)
             handleVehicleAlert(messageEvent.getData());
         }
     }
 
     private void handleVibrationCommand(byte[] data) {
-        Log.d(TAG, "Vibration command received");
+        Log.d(TAG, "Basic vibration command received");
 
         // Update UI
         runOnUiThread(() -> statusTextView.setText("Vibrating..."));
 
-        // Vibrate with default pattern if no specific pattern provided
-        if (vibrator.hasVibrator()) {
-            // Default pattern: Vibrate for 500ms, pause for 100ms, vibrate for 500ms
-            long[] pattern = {0, 500, 100, 500};
+        // Parse the vibration pattern
+        final long[] vibrationPattern = parseVibrationPatternFromData(data);
 
+        // Vibrate the watch with the determined pattern
+        if (vibrator.hasVibrator()) {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1));
+                vibrator.vibrate(VibrationEffect.createWaveform(vibrationPattern, -1));
             } else {
                 // Deprecated in API 26
-                vibrator.vibrate(pattern, -1);
+                vibrator.vibrate(vibrationPattern, -1);
             }
         }
 
         // Reset status text after vibration
         runOnUiThread(() -> {
             // Wait for vibration to complete before updating text
+            long totalVibrationTime = 0;
+            for (long duration : vibrationPattern) {
+                totalVibrationTime += duration;
+            }
+
             mainHandler.postDelayed(() -> {
                 statusTextView.setText("Ready to receive alerts");
-            }, 1500); // Slightly longer than the total vibration time
+            }, totalVibrationTime + 500); // Add a small extra delay
         });
     }
 
@@ -132,7 +139,7 @@ public class MainActivity extends AppCompatActivity implements MessageClient.OnM
             String direction = alertJson.getString("direction");
 
             // Parse vibration pattern if provided
-            long[] vibrationPattern = parseVibrationPattern(alertJson);
+            final long[] vibrationPattern = parseVibrationPattern(alertJson);
 
             runOnUiThread(() -> {
                 // Update status text
@@ -171,6 +178,37 @@ public class MainActivity extends AppCompatActivity implements MessageClient.OnM
         } catch (JSONException e) {
             Log.e(TAG, "Error parsing vehicle alert JSON", e);
         }
+    }
+
+    private long[] parseVibrationPatternFromData(byte[] data) {
+        // Default pattern if parsing fails
+        long[] defaultPattern = new long[]{0, 300, 200, 300};
+
+        if (data == null || data.length == 0) {
+            return defaultPattern;
+        }
+
+        try {
+            // Try to parse custom pattern from JSON
+            String jsonData = new String(data);
+            JSONObject command = new JSONObject(jsonData);
+
+            if (command.has("pattern")) {
+                JSONArray patternArray = command.getJSONArray("pattern");
+                long[] pattern = new long[patternArray.length()];
+
+                for (int i = 0; i < patternArray.length(); i++) {
+                    pattern[i] = patternArray.getLong(i);
+                }
+
+                Log.d(TAG, "Using custom vibration pattern");
+                return pattern;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error parsing vibration data, using default pattern", e);
+        }
+
+        return defaultPattern;
     }
 
     private long[] parseVibrationPattern(JSONObject alertJson) {

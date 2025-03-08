@@ -72,6 +72,8 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -80,6 +82,11 @@ public class MainActivity extends AppCompatActivity {
         // Initialize ViewPager and TabLayout
         viewPager = findViewById(R.id.viewPager);
         tabLayout = findViewById(R.id.tabLayout);
+
+        vibrateWatchButton = findViewById(R.id.vibrateWatchButton);
+        vibrateWatchButton.setOnClickListener(v -> {
+            new Thread(this::sendRightVibrationRequest).start();
+        });
 
         // Set up the adapter
         ViewPagerAdapter adapter = new ViewPagerAdapter(this);
@@ -116,7 +123,7 @@ public class MainActivity extends AppCompatActivity {
         // Initialize the vibrate watch button
         vibrateWatchButton = findViewById(R.id.vibrateWatchButton);
         vibrateWatchButton.setOnClickListener(v -> {
-            new Thread(this::sendVibrationRequest).start();
+            new Thread(this::sendRightVibrationRequest).start();
         });
 
         // Check permissions before starting any services
@@ -152,53 +159,10 @@ public class MainActivity extends AppCompatActivity {
         // Using direct message API instead of service
         new Thread(() -> {
             try {
+                // 1. First send the vehicle alert information
                 JSONObject alert = new JSONObject();
                 alert.put("vehicle_type", vehicleType);
                 alert.put("direction", direction);
-
-                // Create different vibration patterns based on vehicle type
-                JSONArray pattern = new JSONArray();
-
-                switch (vehicleType.toLowerCase()) {
-                    case "siren":
-                        // Urgent pattern - rapid pulses
-                        pattern.put(0);    // Start immediately
-                        pattern.put(100);  // Vibrate
-                        pattern.put(100);  // Pause
-                        pattern.put(100);  // Vibrate
-                        pattern.put(100);  // Pause
-                        pattern.put(100);  // Vibrate
-                        pattern.put(100);  // Pause
-                        pattern.put(300);  // Longer vibrate
-                        break;
-
-                    case "bike":
-                        // Moderate pattern - medium-length pulses
-                        pattern.put(0);    // Start immediately
-                        pattern.put(200);  // Vibrate
-                        pattern.put(200);  // Pause
-                        pattern.put(200);  // Vibrate
-                        pattern.put(200);  // Pause
-                        pattern.put(200);  // Vibrate
-                        break;
-
-                    case "horn":
-                        // Alert pattern - longer pulses
-                        pattern.put(0);    // Start immediately
-                        pattern.put(400);  // Vibrate
-                        pattern.put(200);  // Pause
-                        pattern.put(400);  // Vibrate
-                        break;
-
-                    default:
-                        // Default pattern - single pulse
-                        pattern.put(0);    // Start immediately
-                        pattern.put(300);  // Vibrate
-                        pattern.put(200);  // Pause
-                        pattern.put(300);  // Vibrate
-                }
-
-                alert.put("vibration_pattern", pattern);
 
                 String alertJson = alert.toString();
                 Log.d(TAG, "Sending alert to watch: " + alertJson);
@@ -215,13 +179,20 @@ public class MainActivity extends AppCompatActivity {
                     Tasks.await(sendTask);
                     Log.d(TAG, "Alert sent to watch: " + node.getDisplayName());
                 }
+
+                // 2. Then trigger the vibration separately
+                if(direction == "L" || direction == "Left" || direction == "left"){
+                    sendLeftVibrationRequest();
+
+                }else {
+                    sendRightVibrationRequest();
+                }
             } catch (Exception e) {
                 Log.e(TAG, "Failed to send alert to watch: " + e.getMessage());
             }
         }).start();
     }
-
-    private void sendVibrationRequest() {
+    private void sendLeftVibrationRequest() {
         try {
             // Get all connected devices
             Task<List<Node>> nodesTask = Wearable.getNodeClient(getApplicationContext()).getConnectedNodes();
@@ -243,6 +214,51 @@ public class MainActivity extends AppCompatActivity {
                 });
             }
         } catch (ExecutionException | InterruptedException e) {
+            e.printStackTrace();
+
+            // Show error on UI thread
+            runOnUiThread(() -> {
+                Toast.makeText(MainActivity.this,
+                        "Failed to send vibration command: " + e.getMessage(),
+                        Toast.LENGTH_SHORT).show();
+            });
+        }
+    }
+
+    private void sendRightVibrationRequest() {
+        try {
+            // Create JSON for vibration pattern
+            JSONObject vibrationData = new JSONObject();
+            JSONArray pattern = new JSONArray();
+            pattern.put(0);    // Start immediately
+            pattern.put(200);  // Medium vibrate
+            pattern.put(200);  // Medium pause
+            pattern.put(200);  // Medium vibrate
+            vibrationData.put("pattern", pattern);
+            vibrationData.put("repeat", 1); // No repeat
+            byte[] messageData = vibrationData.toString().getBytes();
+
+            // Get all connected devices
+            Task<List<Node>> nodesTask = Wearable.getNodeClient(getApplicationContext()).getConnectedNodes();
+            List<Node> nodes = Tasks.await(nodesTask);
+
+            for (Node node : nodes) {
+                // Send message to each connected device
+                Task<Integer> sendTask = Wearable.getMessageClient(getApplicationContext())
+                        .sendMessage(node.getId(), VIBRATION_PATH, messageData);
+
+                // Wait for the task to complete
+                Tasks.await(sendTask);
+
+                // Show feedback on UI thread
+                runOnUiThread(() -> {
+                    Toast.makeText(MainActivity.this,
+                            "Vibration command sent to watch",
+                            Toast.LENGTH_SHORT).show();
+                });
+            }
+        } catch (Exception e) {
+            // Catch all exceptions including JSONException
             e.printStackTrace();
 
             // Show error on UI thread
@@ -361,20 +377,6 @@ public class MainActivity extends AppCompatActivity {
         bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE);
     }
 
-    public void startRecording() {
-        if (checkAllPermissionsGranted()) {
-            Intent recordIntent = new Intent(this, AudioRecordingService.class);
-            recordIntent.setAction("START_RECORDING");
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                startForegroundService(recordIntent);
-            } else {
-                startService(recordIntent);
-            }
-            isRecording = true;
-        } else {
-            checkAndRequestPermissions();
-        }
-    }
 
     public void stopRecording() {
         Intent recordIntent = new Intent(this, AudioRecordingService.class);
@@ -399,10 +401,18 @@ public class MainActivity extends AppCompatActivity {
 
             // Only proceed if confidence is high enough (should_notify will be true if confidence > 0.97)
             if (shouldNotify) {
-                // Update the sound detection fragment UI
+                // Update the sound detection fragment UI if needed
+//                new Thread(this::sendVibrationRequest).start();
 
-                // Send alert to watch using direct message API
+                // Send alert to watch with vibration
                 sendAlertToWatch(vehicleType, direction);
+
+                // Display a toast notification about the prediction
+                runOnUiThread(() -> {
+                    Toast.makeText(this,
+                            String.format("Alert: %s detected from %s", vehicleType, direction),
+                            Toast.LENGTH_SHORT).show();
+                });
             }
         } catch (JSONException e) {
             Log.e(TAG, "Error parsing inference result: " + e.getMessage());
