@@ -1,294 +1,138 @@
-https://velog.io/@jjpark17/How-to-make-simple-app-to-make-my-Galaxy-Watch-vibrate-from-My-Phone
+# VisualVroom - Android Application
 
+## Overview
+VisualVroom is an accessibility application designed to help users with hearing impairments detect and identify approaching vehicles and emergency sirens through audio analysis and visual/haptic feedback. The system consists of an Android mobile application and a Wear OS app that work together to provide real-time alerts about vehicle sounds through visual cues and smartwatch vibration patterns.
 
-I recently completed a small Android project that sends a vibration command to my Galaxy Watch with the press of a button.
+## Features
 
-## The Project Overview
+### Mobile Application
+- **Real-time Vehicle Sound Detection**: Identifies sirens, horns, and bicycle sounds
+- **Direction Identification**: Shows whether sounds are coming from the left or right
+- **Visual Alerts**: Clear visual indicators showing vehicle type and direction
+- **Speech-to-Text**: Additional accessibility feature for transcribing speech
+- **Continuous Audio Monitoring**: Background service that processes audio in intervals
 
-This project consists of two main components:
-1. A mobile app with a simple button interface
-2. A wearable app that receives commands and triggers vibrations
+### Wear OS Component
+- **Haptic Feedback**: Provides distinct vibration patterns based on the type of vehicle detected
+- **Direction Indication**: Communicates the direction of approaching vehicles through different vibration patterns
+- **Low-power Operation**: Minimizes battery consumption while maintaining connectivity
+- **Standalone UI**: Simple interface showing connection status
 
-The communication between the phone and watch happens through Google's Wearable API, making it relatively straightforward to implement.
+## Technical Details
 
-## The Technical Implementation
+### Mobile Application
+- **Audio Processing**: Stereo channel recording with amplitude-based direction detection
+- **Machine Learning Integration**: Connects to a Python backend that runs a Vision Transformer model for classification
+- **Continuous Monitoring**: Records and analyzes audio in 3-5 second intervals
+- **Low Resource Usage**: Optimized for battery efficiency during continuous usage
 
-### Setting Up the Configuration Files
+### Wear OS Component
+- **Wearable Messaging API**: Uses Google's Wearable Message API for reliable communication
+- **Custom Vibration Patterns**:
+  - Sirens: Rapid, urgent patterns
+  - Bicycle bells: Gentle, repeating patterns
+  - Car horns: Strong, attention-grabbing patterns
+- **Built with Wear OS Design Principles**: Follows material design for wearables
 
-Before diving into the code, we need to set up the proper configuration files for both the mobile and wearable components.
+## Requirements
+- Android 11+ (API level 30) for mobile app
+- Wear OS 3.0+ for watch app
+- Stereo microphone support on mobile device
+- Bluetooth connectivity between phone and watch
 
-#### Mobile App AndroidManifest.xml
-we add the following permissions to our AndroidManifest.xml for our mobile module
+## Installation
 
-```xml
+### Mobile Application
+1. Clone the repository
+2. Open the project in Android Studio Iguana or later
+3. Update the server URL in `AudioRecorder.java` if using a custom backend
+4. Build and run the application
 
-    <!-- Permissions needed for communication -->
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.VIBRATE" />
+### Wear OS App
+1. The Wear OS app will be automatically installed on your paired watch when you install the mobile app
+2. Alternatively, you can manually install the Wear OS APK from the release page
 
-   
-```
+## Project Structure
 
-#### Wearable App AndroidManifest.xml
-We add the vibration permissions and we change the android:theme to AppCompat for our MainActivity.
+### Mobile App Structure
+- `/mobile/src/main/java/edu/skku/cs/visualvroomandroid/`
+  - `MainActivity.java`: Main application entry point and tab controller
+  - `AudioRecorderFragment.java`: UI for sound detection and visualization
+  - `SpeechToTextFragment.java`: Speech transcription functionality
+  - `AudioRecorder.java`: Core audio recording and processing
+  - `AudioRecordingService.java`: Background service for continuous monitoring
+  - `WearNotificationService.java`: Handles Wear OS communication
 
-```xml
+### Wear OS App Structure
+- `/wear/src/main/java/edu/skku/cs/visualvroomandroid/presentation/`
+  - `MainActivity.java`: Primary entry point and message receiver
+- `/wear/src/main/res/layout/`
+  - `activity_main.xml`: Main UI layout
+  - `activity_main-round.xml`: Round watch optimization
 
-    <!-- Permissions -->
-    <uses-permission android:name="android.permission.VIBRATE" />
+## Permissions
 
+### Mobile App Permissions
+- `RECORD_AUDIO`: For sound detection
+- `INTERNET`: For backend communication
+- `ACCESS_FINE_LOCATION` and `ACCESS_COARSE_LOCATION`: For future location-aware features
+- `FOREGROUND_SERVICE_MICROPHONE`: For Android 14+ foreground service
+- `POST_NOTIFICATIONS`: For Android 13+ notifications
 
-```
+### Wear OS App Permissions
+- `VIBRATE`: For providing haptic feedback
+- `WAKE_LOCK`: To ensure alerts are delivered even when the watch screen is off
 
-```xml
-  <activity
-            android:name=".presentation.MainActivity"
-            android:exported="true"
-            android:taskAffinity=""
-            android:theme="@style/Theme.AppCompat">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-```
-#### Mobile App build.gradle.kts
-We add the core-ktkx version 1.12.0 or we get a compatability error
+## Backend Communication
+The mobile app communicates with a PyTorch-based backend running a Vision Transformer model. The backend processes audio spectrograms and returns:
+- Vehicle type classification
+- Direction prediction
+- Confidence score
+- Notification decision
 
-```kotlin
+## Watch-Phone Communication
+The system uses the Wearable Message API to send alerts from the phone to the watch when a vehicle is detected with high confidence.
 
-dependencies {
-    implementation(libs.androidx.appcompat)
-    implementation(libs.play.services.wearable) // Important for watch communication
-    implementation(libs.material)
-    implementation(libs.androidx.activity)
-    implementation(libs.androidx.constraintlayout)
-    implementation("androidx.core:core-ktx:1.12.0")
-    implementation("androidx.core:core:1.12.0")
-    
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
-    
-    // This connects to the wear module
-    wearApp(project(":wear"))
-}
-```
+### Message Paths
+- `/vibration`: Triggers the watch to vibrate
+- `/vehicle_alert`: Contains detailed information about detected vehicles
 
-#### Wearable App build.gradle.kts
+### Message Format
+Messages use a JSON format containing:
+- Vehicle type
+- Direction
+- Vibration pattern specifications
 
-```kotlin
+### Vibration Patterns
+Different patterns are used based on the vehicle type:
+- **Siren**: Urgent pattern with short pulses (100ms on, 100ms off, 100ms on, 100ms off, 300ms on)
+- **Bike**: Moderate pattern with medium pulses (200ms on, 200ms off, 200ms on)
+- **Horn**: Alert pattern with longer pulses (400ms on, 200ms off, 400ms on)
 
+## Usage
 
-dependencies {
-    // Wearable-specific dependencies
-    implementation(libs.play.services.wearable)
-    implementation("androidx.wear:wear:1.2.0")
-    
-    // UI components
-    implementation(libs.androidx.appcompat)
-    implementation(libs.androidx.constraintlayout)
-    implementation(libs.material)
-    
-    // Compose dependencies for modern UI (optional for this project)
-    implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.ui)
-    implementation(libs.androidx.ui.tooling.preview)
-    implementation(libs.androidx.compose.material)
-    implementation(libs.androidx.compose.foundation)
-    implementation(libs.androidx.activity.compose)
-    implementation(libs.androidx.core.splashscreen)
-    
-    // Core Android dependencies
-    implementation("androidx.core:core-ktx:1.12.0")
-    implementation("androidx.core:core:1.12.0")
-}
-```
+### Mobile App
+1. Launch the application
+2. Navigate between the "Sound Detection" and "Speech to Text" tabs
+3. On the Sound Detection tab, press the microphone button to start monitoring for vehicle sounds
+4. When a vehicle is detected, the app will display the type and direction
+5. Use the "Vibrate Watch" button to test the connection with your Wear OS device
 
-### Setting Up the Mobile App
+### Wear OS App
+1. The watch app runs automatically in the background
+2. The main screen shows the current status of the connection
+3. When a vehicle is detected by the phone, the watch will vibrate with the appropriate pattern
 
-The mobile app is intentionally minimal. Its sole purpose is to send a command to the connected watch when a button is pressed. Here's what the implementation looks like:
+## Troubleshooting
 
-First, I created a simple layout with a centered button:
+### Watch Connectivity Issues
+- Ensure Bluetooth is enabled on both devices
+- Check that the mobile app is running
+- Verify the watch is properly paired with the phone
+- Disable battery optimization for the app on both devices
 
-```xml
-<Button
-    android:id="@+id/vibration_button"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:text="Vibrate Watch"
-    android:padding="16dp" />
-```
-
-The magic happens in the `MainActivity` where I implemented the communication logic:
-
-```java
-private static final String VIBRATION_PATH = "/vibration";
-
-// When the button is clicked, start a new thread to send the vibration request
-vibrationButton.setOnClickListener(new View.OnClickListener() {
-    @Override
-    public void onClick(View v) {
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                sendVibrationRequest();
-            }
-        }).start();
-    }
-});
-```
-
-The `sendVibrationRequest()` method handles the actual communication:
-
-```java
-private void sendVibrationRequest() {
-    try {
-        // Get all connected devices
-        Task<List<Node>> nodesTask = Wearable.getNodeClient(getApplicationContext()).getConnectedNodes();
-        List<Node> nodes = Tasks.await(nodesTask);
-
-        for (Node node : nodes) {
-            // Send message to each connected device
-            Task<Integer> sendTask = Wearable.getMessageClient(getApplicationContext())
-                .sendMessage(node.getId(), VIBRATION_PATH, new byte[0]);
-            
-            // Wait for the task to complete
-            Tasks.await(sendTask);
-            
-            // Show feedback via a toast message
-            runOnUiThread(() -> {
-                Toast.makeText(MainActivity.this,
-                    "Vibration command sent to watch",
-                    Toast.LENGTH_SHORT).show();
-            });
-        }
-    } catch (Exception e) {
-        // Handle any errors
-        e.printStackTrace();
-    }
-}
-```
-
-### Creating the Watch App
-
-The watch app is responsible for listening for incoming messages and triggering the vibration when a command is received. Here's how I implemented it:
-
-In the `MainActivity` for the wearable app, I implemented the `MessageClient.OnMessageReceivedListener` interface:
-
-```java
-public class MainActivity extends AppCompatActivity implements MessageClient.OnMessageReceivedListener {
-    private static final String VIBRATION_PATH = "/vibration";
-    private TextView statusTextView;
-    private Vibrator vibrator;
-    
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        
-        statusTextView = findViewById(R.id.status_text);
-        
-        // Get vibrator service
-        vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-    }
-    
-    @Override
-    protected void onResume() {
-        super.onResume();
-        // Register the message listener when the app is visible
-        Wearable.getMessageClient(this).addListener(this);
-        statusTextView.setText("Ready to receive vibration commands");
-    }
-    
-    @Override
-    protected void onPause() {
-        super.onPause();
-        // Unregister when the app isn't visible
-        Wearable.getMessageClient(this).removeListener(this);
-    }
-}
-```
-
-The important part is handling the message when it arrives:
-
-```java
-@Override
-public void onMessageReceived(MessageEvent messageEvent) {
-    if (messageEvent.getPath().equals(VIBRATION_PATH)) {
-        // Update UI to show we're vibrating
-        runOnUiThread(() -> {
-            statusTextView.setText("Vibrating...");
-        });
-        
-        // Vibrate the watch with a pattern
-        if (vibrator.hasVibrator()) {
-            // Vibrate for 500ms, pause for 100ms, vibrate for 500ms
-            long[] pattern = {0, 500, 100, 500};
-            
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1));
-            } else {
-                vibrator.vibrate(pattern, -1);
-            }
-        }
-        
-        // Reset status text after vibration completes
-        runOnUiThread(() -> {
-            statusTextView.postDelayed(() -> {
-                statusTextView.setText("Ready to receive vibration commands");
-            }, 1500);
-        });
-    }
-}
-```
-
-## Key Configuration Elements
-
-
-
-### In the AndroidManifest.xml Files
-
-1. **Permissions**: Both apps require specific permissions:
-   - `VIBRATE` - Obviously needed for the watch to vibrate
-   - `WAKE_LOCK` - Allows the app to keep the processor from sleeping when needed
-   - `INTERNET` - Enables network communication
-
-2. **Wearable Feature Declaration**: The watch app needs to declare itself as a wearable app with:
-   ```xml
-   <uses-feature android:name="android.hardware.type.watch" />
-   ```
-
-3. **Wearable Library**: The watch app must include the wearable library:
-   ```xml
-   <uses-library android:name="com.google.android.wearable" android:required="true" />
-   ```
-
-4. **Standalone Declaration**: The metadata tag indicates whether the watch app can run independently:
-   ```xml
-   <meta-data android:name="com.google.android.wearable.standalone" android:value="true" />
-   ```
-
-### In the build.gradle.kts Files
-
-1. **Wearable Dependencies**: Both projects need the Wearable API:
-   ```kotlin
-   implementation(libs.play.services.wearable)
-   ```
-
-2. **Module Connection**: The mobile app needs to reference the wearable module:
-   ```kotlin
-   wearApp(project(":wear"))
-   ```
-
-3. **Compatibility Settings**: Both modules use the same `applicationId` to ensure they're recognized as a pair.
-
-## What I Learned
-
-1. **Wearable Communication**: The Wearable API makes it relatively straightforward to send messages between a phone and watch.
-
-2. **Threading Considerations**: It's essential to perform network operations off the main thread to keep the UI responsive.
-
-3. **Device Capabilities**: Not all wearable devices support the same vibration capabilities, so it's important to check for support.
-
+### Audio Detection Issues
+- Ensure microphone permissions are granted
+- Check that the device has a stereo microphone
+- Position the phone with clear line of sight to potential sound sources
+- Increase volume or adjust the phone position if sounds are too quiet
