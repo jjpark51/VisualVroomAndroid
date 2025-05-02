@@ -8,6 +8,8 @@ import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.util.Log;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -29,8 +31,8 @@ public class MainActivity extends AppCompatActivity implements MessageClient.OnM
     private static final String VIBRATION_PATH = "/vibration";
     private static final String VEHICLE_ALERT_PATH = "/vehicle_alert";
 
-    // Animation display duration in milliseconds
-    private static final int ANIMATION_DURATION = 5000;
+    // Animation display duration in milliseconds - changed from 5000 to 4000
+    private static final int ANIMATION_DURATION = 4000;
 
     private TextView statusTextView;
     private TextView directionTextView;
@@ -41,11 +43,23 @@ public class MainActivity extends AppCompatActivity implements MessageClient.OnM
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                WindowManager.LayoutParams.FLAG_FULLSCREEN);
+
+// Hide action bar if it exists
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().hide();
+        }
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // Remove title bar to get full screen
+
+
         // Initialize views
-        statusTextView = findViewById(R.id.status_text);
+//        statusTextView = findViewById(R.id.status_text);
         directionTextView = findViewById(R.id.direction_text);
         vehicleAnimationView = findViewById(R.id.vehicle_animation);
 
@@ -61,8 +75,9 @@ public class MainActivity extends AppCompatActivity implements MessageClient.OnM
             vehicleAnimationView.cancelAnimation();
             vehicleAnimationView.setVisibility(View.GONE);
             directionTextView.setVisibility(View.GONE);
-            statusTextView.setText("Ready to receive alerts");
+//            statusTextView.setText("Ready to receive alerts");
         };
+
     }
 
     @Override
@@ -70,7 +85,7 @@ public class MainActivity extends AppCompatActivity implements MessageClient.OnM
         super.onResume();
         // Register the message listener
         Wearable.getMessageClient(this).addListener(this);
-        statusTextView.setText("Ready to receive alerts");
+//        statusTextView.setText("Ready to receive alerts");
     }
 
     @Override
@@ -100,7 +115,7 @@ public class MainActivity extends AppCompatActivity implements MessageClient.OnM
         Log.d(TAG, "Basic vibration command received");
 
         // Update UI
-        runOnUiThread(() -> statusTextView.setText("Vibrating..."));
+//        runOnUiThread(() -> statusTextView.setText("Vibrating..."));
 
         // Parse the vibration pattern
         final long[] vibrationPattern = parseVibrationPatternFromData(data);
@@ -124,7 +139,7 @@ public class MainActivity extends AppCompatActivity implements MessageClient.OnM
             }
 
             mainHandler.postDelayed(() -> {
-                statusTextView.setText("Ready to receive alerts");
+//                statusTextView.setText("Ready to receive alerts");
             }, totalVibrationTime + 500); // Add a small extra delay
         });
     }
@@ -143,7 +158,7 @@ public class MainActivity extends AppCompatActivity implements MessageClient.OnM
 
             runOnUiThread(() -> {
                 // Update status text
-                statusTextView.setText("Alert: " + vehicleType);
+//                statusTextView.setText("Alert: " + vehicleType);
 
                 // Update direction text
                 if (direction.equalsIgnoreCase("L")) {

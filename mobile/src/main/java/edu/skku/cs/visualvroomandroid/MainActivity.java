@@ -83,10 +83,10 @@ public class MainActivity extends AppCompatActivity {
         viewPager = findViewById(R.id.viewPager);
         tabLayout = findViewById(R.id.tabLayout);
 
-        vibrateWatchButton = findViewById(R.id.vibrateWatchButton);
-        vibrateWatchButton.setOnClickListener(v -> {
-            new Thread(this::sendRightVibrationRequest).start();
-        });
+//        vibrateWatchButton = findViewById(R.id.vibrateWatchButton);
+//        vibrateWatchButton.setOnClickListener(v -> {
+//            new Thread(this::sendRightVibrationRequest).start();
+//        });
 
         // Set up the adapter
         ViewPagerAdapter adapter = new ViewPagerAdapter(this);
@@ -97,10 +97,10 @@ public class MainActivity extends AppCompatActivity {
                 (tab, position) -> {
                     switch (position) {
                         case 0:
-                            tab.setText("Speech to Text");
+                            tab.setText("Audio Recorder");
                             break;
                         case 1:
-                            tab.setText("Audio Recorder");
+                            tab.setText("Speech to Text");
                             break;
                     }
                 }
@@ -121,10 +121,10 @@ public class MainActivity extends AppCompatActivity {
                 Context.RECEIVER_NOT_EXPORTED);
 
         // Initialize the vibrate watch button
-        vibrateWatchButton = findViewById(R.id.vibrateWatchButton);
-        vibrateWatchButton.setOnClickListener(v -> {
-            new Thread(this::sendRightVibrationRequest).start();
-        });
+//        vibrateWatchButton = findViewById(R.id.vibrateWatchButton);
+//        vibrateWatchButton.setOnClickListener(v -> {
+//            new Thread(this::sendRightVibrationRequest).start();
+//        });
 
         // Check permissions before starting any services
         checkAndRequestPermissions();
@@ -139,11 +139,11 @@ public class MainActivity extends AppCompatActivity {
         public Fragment createFragment(int position) {
             switch (position) {
                 case 0:
-                    speechToTextFragment = new SpeechToTextFragment();
-                    return speechToTextFragment;
-                case 1:
                     audioRecorderFragment = new AudioRecorderFragment();
                     return audioRecorderFragment;
+                case 1:
+                    speechToTextFragment = new SpeechToTextFragment();
+                    return speechToTextFragment;
                 default:
                     throw new IllegalStateException("Unexpected position " + position);
             }
